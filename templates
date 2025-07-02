@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Lisan Al Ishara</title>
+<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"> <style>
+body {
+margin: 0;
+font-family: 'Poppins', sans-serif;
+background: #f9fafb;
+}
+header {
+background-color: #fff;
+padding: 20px 40px;
+display: flex;
+justify-content: space-between;
+align-items: center;
+border-bottom: 2px solid #0284c7;
+box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+header .logo {
+display: flex;
+align-items: center;
+}
+header img {
+height: 80px;
+margin-left: 15px; /* Adjust for RTL */
+}
+header .site-title {
+font-size: 28px;
+font-weight: bold;
+color: #0284c7;
+}
+
+/* NEW: Styles for the header actions/icons */
+.header-actions {
+display: flex;
+gap: 20px; /* Space between icons/elements */
+}
+.header-actions .action-icon {
+font-size: 24px;
+color: #0284c7;
+cursor: pointer;
+transition: color 0.3s ease;
+}
+.header-actions .action-icon:hover {
+color: #007bb6;
+}
+
+.tabs {
+display: flex;
+justify-content: center;
+background-color: #0284c7;
+}
+.tabs button {
+flex: 1;
+padding: 15px 20px;
+border: none;
+background-color: transparent;
+color: white;
+font-size: 18px;
+cursor: pointer;
+transition: background-color 0.3s, color 0.3s;
+}
+.tabs button.active {
+background-color: #007bb6;
+}
+.tabs button:hover {
+background-color: #007bb6;
+}
+.tab-content {
+padding: 30px;
+background-color: #fff;
+margin: 20px auto;
+border-radius: 10px;
+box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+max-width: 900px;
+min-height: 500px;
+display: none; /* Hidden by default */
+}
+.tab-content.active {
+display: block; /* Show active tab */
+}
+
+/* Specific styles for Sign to Speech tab (kept as is) */
+.camera-container {
+position: relative;
+width: 640px;
+height: 480px;
+margin: 20px auto;
+border: 2px solid #ccc;
+border-radius: 8px;
+overflow: hidden;
+background-color: #333; /* Dark background when camera is off */
+display: flex;
+align-items: center;
+justify-content: center;
+color: white;
+font-size: 20px;
+}
+#cameraFeed {
+display: block;
+width: 100%;
+height: 100%;
+object-fit: contain; /* Maintain aspect ratio */
+transform: scaleX(-1); /* Mirror effect for webcam */
+}
+
+/* Styles for text overlays on the camera feed */
+.overlay-text {
+position: absolute;
+color: white;
+font-weight: bold;
+text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+direction: rtl;
+}
+
+#predictionText { /* For the single predicted word, top-right */
+top: 10px;
+right: 10px; /* Position on the right side */
+font-size: 20px;
+text-align: right;
+}
+
+#sentenceDisplay { /* For the accumulated sentence, bottom-center */
+bottom: 10px;
+left: 10px;
+right: 10px;
+font-size: 24px;
+text-align: center; /* Center the text for the sentence */
+}
+
+.controls {
+display: flex;
+justify-content: center;
+gap: 20px;
+margin-top: 20px;
+}
+.controls button {
+padding: 12px 25px;
+border: none;
+border-radius: 5px;
+font-size: 16px;
+cursor: pointer;
+transition: background-color 0.3s;
+}
+.controls button.start-btn {
+background-color: #4CAF50;
+color: white;
+}
+.controls button.start-btn:hover {
+background-color: #45a049;
+}
+.controls button.stop-btn {
+background-color: #f44336;
+color: white;
+}
+.controls button.stop-btn:hover {
+background-color: #da190b;
+}
+.controls button.clear-btn {
+background-color: #007bb6;
+color: white;
+}
+.controls button.clear-btn:hover {
+background-color: #006090;
+}
+
+/* Styles for Text to Sign tab */
+.input-area {
+display: flex;
+gap: 10px;
+margin-bottom: 20px; /* Adjusted margin */
+}
+.input-area input {
+flex: 1;
+padding: 12px 15px; /* Adjusted padding */
+font-size: 16px;
+border: 1px solid #ccc; /* Adjusted border */
+border-radius: 5px; /* Adjusted radius */
+direction: rtl;
+}
+.input-area button {
+padding: 12px 20px; /* Adjusted padding */
+font-size: 16px;
+color: white;
+background-color: #0284c7;
+border: none;
+border-radius: 5px; /* Adjusted radius */
+cursor: pointer;
+transition: background-color 0.3s; /* Added transition */
+}
+.input-area button:hover {
+background-color: #007bb6; /* Added hover effect */
+}
+
+.avatar-view { /* NEW CSS for avatar container */
+width: 100%;
+height: 500px;
+display: flex;
+justify-content: center;
+align-items: center;
+background-color: transparent;
+overflow: hidden;
+border-radius: 8px; /* Added for consistency */
+box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Added for consistency */
+margin-top: 20px; /* Added for consistency */
+}
+model-viewer { /* NEW CSS for model-viewer */
+width: 100%;
+height: 100%;
+pointer-events: none;
+transform: scale(1.8) translateY(100px);
+background-color: transparent;
+}
+.voice-output-chat-area { /* Replaced chat-container with this */
+padding: 15px; /* Adjusted padding */
+background-color: #fdfdfd; /* Light background */
+border: 1px solid #ddd; /* Adjusted border */
+border-radius: 8px; /* Adjusted radius */
+margin-top: 20px; /* Added margin */
+max-height: 400px; /* Added max-height */
+overflow-y: auto; /* Added scroll */
+}
+/* Styles for chat messages (adapted to fit new chat area) */
+.chat-message {
+padding: 8px 12px;
+margin-bottom: 10px;
+border-radius: 15px;
+max-width: 80%;
+word-wrap: break-word;
+}
+.chat-message.user {
+background-color: #e0f7fa;
+margin-right: auto; /* Push to right for RTL */
+border-bottom-right-radius: 2px;
+}
+.chat-message.bot {
+background-color: #f3e5f5;
+margin-left: auto; /* Push to left for RTL */
+border-bottom-left-radius: 2px;
+}
+
+.warning-message {
+color: red;
+font-weight: bold;
+text-align: center;
+margin-top: 10px;
+}
+</style>
+</head>
+<body>
+<header>
+<div class="logo">
+<img src="static/lisan.jpeg" alt="Logo" />
+<div class="site-title">Lisan Al Ishara</div> </div>
+<div class="header-actions"> <i class="fas fa-info-circle action-icon" title="About"></i>
+    <i class="fas fa-headset action-icon" title="Contact Us"></i>
+    <i class="fas fa-cog action-icon" title="Settings"></i>
+</div>
+</header>
+
+<div class="tabs">
+    <button class="tab-button active" onclick="openTab(event, 'textToSignTab')">صوت إلى إشارة</button>
+    <button class="tab-button" onclick="openTab(event, 'signToSpeechTab')">إشارة إلى صوت</button>
+</div>
+
+<div id="signToSpeechTab" class="tab-content active">
+  <h2>إشارة إلى صوت</h2>
+  <div class="camera-container">
+    <img id="cameraFeed" alt="Camera Feed" style="display: none;">
+    <span id="cameraMessage">جاري تحميل الكاميرا...</span>
+    
+    <div class="overlay-text" id="predictionText">الكلمة: <span>لا يوجد</span></div>
+    
+    <div class="overlay-text" id="sentenceDisplay"></div>
+  </div>
+  <div class="controls">
+    <button class="start-btn" onclick="initializeCamera()">بدء الكاميرا</button>
+    <button class="stop-btn" onclick="stopCamera()">إيقاف الكاميرا</button>
+    <button class="clear-btn" onclick="clearSentence()">مسح الجملة</button>
+  </div>
+  <div class="warning-message" id="cameraError" style="display: none;"></div>
+</div>
+
+<div id="textToSignTab" class="tab-content">
+  <h2>نص إلى إشارة</h2>
+  <div class="input-area">
+    <input id="userInput" type="text" placeholder="اكتب النص هنا..." />
+    <button onclick="sendMessageAndPlay()">إرسال</button>
+    <button onclick="startVoiceRecognition()">🎙️</button>
+  </div>
+  <div class="avatar-view">
+    <model-viewer
+      id="avatarViewer"
+      src="static/avatar_idle.glb"
+      alt="3D Avatar"
+      ar
+      ar-modes="webxr scene-viewer quick-look"
+      shadow-intensity="1"
+      autoplay
+      loop
+      orientation="-10deg 10deg -43deg"
+      animation-name="idle">
+    </model-viewer>
+  </div>
+  <div class="voice-output-chat-area" id="chatHistory">
+    </div>
+</div>
+
+<script>
+  const socket = io();
+  let modelInitialized = false;
+  let cameraActive = false; // Flag to track camera state
+
+  // Socket.IO event handlers (kept as is for camera)
+  socket.on('connect', () => {
+    console.log('Connected to server');
+    // Request model initialization upon connection
+    socket.emit('initialize_model', { model_path: 'test' });
+  });
+
+  socket.on('model_initialized', (data) => {
+    if (data.status === 'success') {
+      console.log('Model initialized successfully:', data.message);
+      modelInitialized = true;
+      document.getElementById('cameraMessage').innerText = 'تم تحميل النموذج بنجاح. اضغط "بدء الكاميرا".';
+    } else {
+      console.error('Model initialization failed:', data.message);
+      document.getElementById('cameraMessage').innerText = 'فشل تحميل النموذج: ' + data.message;
+      document.getElementById('cameraError').innerText = 'خطأ: فشل تحميل النموذج. تأكد من وجود ملفات النموذج (test.h5, test_actions.txt, etc.) في مجلد app.py.';
+      document.getElementById('cameraError').style.display = 'block';
+    }
+  });
+
+  socket.on('video_frame', (data) => {
+    if (cameraActive) { // Only update if camera is supposed to be active
+      const cameraFeed = document.getElementById('cameraFeed');
+      cameraFeed.src = 'data:image/jpeg;base64,' + data.frame;
+      cameraFeed.style.display = 'block'; // Show the image when frames start coming
+      document.getElementById('cameraMessage').style.display = 'none'; // Hide message
+
+      // Update predictionText for the single word (top-right)
+      document.getElementById('predictionText').querySelector('span').innerText = data.prediction || 'لا يوجد';
+      
+      // Update sentenceDisplay for the accumulated sentence (bottom-center)
+      document.getElementById('sentenceDisplay').innerText = data.sentence || '';
+      
+      // Clear error message if frames are coming
+      document.getElementById('cameraError').style.display = 'none'; 
+    }
+  });
+
+  socket.on('camera_stream_started', (data) => {
+    console.log(data.message);
+    if (data.status === 'success') {
+      cameraActive = true;
+      document.getElementById('cameraMessage').innerText = 'جاري بث الكاميرا...';
+      document.getElementById('cameraError').style.display = 'none'; 
+    }
+  });
+
+  socket.on('camera_stream_stopped', (data) => {
+    console.log(data.message);
+    cameraActive = false;
+    document.getElementById('cameraFeed').style.display = 'none'; // Hide camera feed
+    document.getElementById('cameraMessage').innerText = 'تم إيقاف الكاميرا.';
+    document.getElementById('predictionText').querySelector('span').innerText = 'لا يوجد'; // Reset single word
+    document.getElementById('sentenceDisplay').innerText = ''; // Reset sentence
+  });
+
+  socket.on('camera_error', (data) => {
+    console.error('Camera Error:', data.message);
+    cameraActive = false; // Ensure flag is false on error
+    document.getElementById('cameraMessage').innerText = 'خطأ في الكاميرا: ' + data.message;
+    document.getElementById('cameraFeed').style.display = 'none';
+    document.getElementById('cameraError').innerText = 'خطأ في الكاميرا: ' + data.message;
+    document.getElementById('cameraError').style.display = 'block';
+  });
+
+  socket.on('sentence_cleared', (data) => {
+    console.log('Sentence cleared:', data.status);
+    document.getElementById('sentenceDisplay').innerText = '';
+  });
+
+  // --- Camera Control Functions (kept as is) ---
+  function initializeCamera() {
+    if (!modelInitialized) {
+      document.getElementById('cameraMessage').innerText = 'النموذج لم يتم تحميله بعد. يرجى الانتظار أو تحديث الصفحة.';
+      document.getElementById('cameraError').innerText = 'خطأ: النموذج لم يتم تحميله بعد.';
+      document.getElementById('cameraError').style.display = 'block';
+      return;
+    }
+    document.getElementById('cameraMessage').innerText = 'جاري بدء الكاميرا...';
+    socket.emit('start_camera_stream');
+  }
+
+  function stopCamera() {
+    socket.emit('stop_camera_stream');
+  }
+
+  function clearSentence() {
+    socket.emit('clear_sentence');
+  }
+
+  // --- Tab switching logic (adjusted to reflect new default tab) ---
+  function openTab(evt, tabName) {
+    let i, tabcontent, tabbuttons;
+    tabcontent = document.getElementsByClassName("tab-content");
+    for (i = 0; i < tabcontent.length; i++) {
+      tabcontent[i].style.display = "none";
+      tabcontent[i].classList.remove('active');
+    }
+    tabbuttons = document.getElementsByClassName("tab-button");
+    for (i = 0; i < tabbuttons.length; i++) {
+      tabbuttons[i].classList.remove("active");
+    }
+    document.getElementById(tabName).style.display = "block";
+    document.getElementById(tabName).classList.add("active");
+    evt.currentTarget.classList.add("active");
+
+    // Handle camera start/stop based on tab
+    if (tabName === 'signToSpeechTab') {
+      // If switching to Sign to Speech, start camera if not already active
+      if (!cameraActive) { // Check the cameraActive flag
+          initializeCamera();
+      }
+    } else {
+      // If switching away from Sign to Speech, stop camera
+      if (cameraActive) { // Check the cameraActive flag
+          stopCamera();
+      }
+    }
+  }
+
+  // --- Text to Sign Logic (UPDATED from your provided code) ---
+  const avatarViewer = document.getElementById('avatarViewer');
+  const chatHistory = document.getElementById('chatHistory'); // Kept old ID for consistency
+  const defaultAvatarSrc = "static/avatar_idle.glb"; // Default idle animation
+
+  // Define animations with file paths and durations (from your provided code)
+  const animations = {
+    "السلام": { file: "/static/salam_alaikum.glb", duration: 2330 },
+    "بوابه": { file: "/static/bab.glb", duration: 2330 },
+    "الرحله": { file: "/static/alrhla.glb", duration: 2330 },
+    "خمسه": { file: "/static/five.glb", duration: 2330 },
+    "واحد": { file: "/static/one.glb", duration: 2330 },
+    "هي": { file: "/static/hoa.glb", duration: 3000 },
+    "رقم": { file: "/static/rakm.glb", duration: 2330 }
+    // أضف المزيد من الإشارات هنا بنفس التنسيق
+  };
+
+  // Function to append chat messages (kept from previous code for styling)
+  function appendChatMessage(text, sender) {
+    const msgDiv = document.createElement('div');
+    msgDiv.classList.add('chat-message', sender);
+    msgDiv.innerText = text;
+    chatHistory.appendChild(msgDiv);
+    chatHistory.scrollTop = chatHistory.scrollHeight; // Auto-scroll to bottom
+  }
+
+  // UPDATED playAnimations using async/await (from your provided code)
+  async function playAnimations(words) {
+    for (const word of words) {
+      const anim = animations[word];
+      if (anim) {
+        avatarViewer.setAttribute("src", ""); // Clear current model to force reload/animation reset
+        await new Promise(r => setTimeout(r, 50)); // Small delay for browser to register change
+        avatarViewer.setAttribute("src", anim.file);
+        // Wait for the animation to complete before moving to the next
+        await new Promise(r => setTimeout(r, anim.duration));
+      } else {
+        console.warn(`Animation for word "${word}" not found. Playing default idle for 1s.`);
+        // If animation not found, play idle for a default duration or simply skip animation
+        avatarViewer.setAttribute("src", defaultAvatarSrc); // Ensure idle is set
+        await new Promise(r => setTimeout(r, 1000)); // Default 1s for unknown word
+      }
+    }
+    avatarViewer.setAttribute("src", defaultAvatarSrc); // Return to idle animation after all words
+  }
+
+  // UPDATED sendMessageAndPlay (to use async playAnimations and appendChatMessage)
+  async function sendMessageAndPlay() {
+    const input = document.getElementById("userInput").value.trim();
+    if (input === "") return;
+
+    appendChatMessage(input, 'user'); // Add user message to chat
+
+    const words = input.split(" ");
+    await playAnimations(words); // Wait for animations to complete
+    
+    document.getElementById("userInput").value = ''; // Clear input
+    appendChatMessage("تمت ترجمة الجملة", 'bot'); // Bot response after animation
+  }
+
+  // startVoiceRecognition (kept as is, as it's more robust)
+  function startVoiceRecognition() {
+    if ('webkitSpeechRecognition' in window) {
+      const recognition = new webkitSpeechRecognition();
+      recognition.lang = "ar-EG"; // Set language to Arabic (Egypt)
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      const recognitionStatus = document.getElementById('recognitionStatus');
+
+      recognition.onstart = function() {
+        recognitionStatus.innerText = '🎙️ جاري الاستماع...';
+        recognitionStatus.style.color = '#0284c7';
+      };
+
+      recognition.onresult = function (event) {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById("userInput").value = transcript;
+        sendMessageAndPlay();
+        recognitionStatus.innerText = '✅ تم التعرف على الصوت.';
+        recognitionStatus.style.color = 'green';
+      };
+
+      recognition.onerror = function (event) {
+        console.error("Voice recognition error:", event.error);
+        recognitionStatus.innerText = '❌ خطأ في التعرف على الصوت: ' + event.error;
+        recognitionStatus.style.color = 'red';
+      };
+
+      recognition.onend = function() {
+        if (!recognitionStatus.innerText.includes('جاري الاستماع')) { // Avoid overriding success/error
+             recognitionStatus.innerText = ''; // Clear status if no error/success was set
+        }
+      };
+
+      recognition.start();
+    } else {
+      alert('متصفحك لا يدعم التعرف على الصوت (webkitSpeechRecognition). يرجى استخدام متصفح Chrome.');
+      document.getElementById('recognitionStatus').innerText = 'متصفحك لا يدعم التعرف على الصوت.';
+      document.getElementById('recognitionStatus').style.color = 'orange';
+    }
+  }
+
+  // Initialize tabs and camera on load (adjusted to reflect new default tab)
+  document.addEventListener('DOMContentLoaded', function() {
+    // Open the default tab (textToSignTab)
+    document.querySelector('.tab-button.active').click(); // Simulate click to activate tab logic
+    
+    // Handle Enter key in input field for textToSignTab
+    const input = document.getElementById('userInput');
+    input.addEventListener('keypress', function(event) {
+      if (event.key === 'Enter') {
+        sendMessageAndPlay();
+      }
+    });
+  });
+</script>
+</body>
+</html>
